@@ -1,264 +1,296 @@
 <?php
+use JetBrains\PhpStorm\NoReturn;
+use SkillDo\Validate\Rule;
+
 class AdminRoleAjax {
-    static function save($ci, $model) {
+    #[NoReturn] 
+    static function save(SkillDo\Http\Request $request, $model): void
+    {
+        if(!Auth::hasCap('role_editor')) {
+            response()->error(trans('error.role'));
+        }
 
-        $result['status']  = 'error';
+        if ($request->isMethod('post')) {
 
-        $result['message'] = __('Lưu dữ liệu không thành công');
-
-        if( Request::post() ) {
-
-            $data            = Request::post();
+            $data            = $request->input();
 
             $roleName        = Str::clear($data['role_name']);
 
-            $role            = Role::get($data['role_name']);
+            if($roleName == 'root' && !Admin::isRoot()) {
+                response()->error(trans('error.role'));
+            }
 
-            $capabilities_old = $role->capabilities;
+            $role            = Role::get($roleName);
+
+            $capabilities_old = $role->getCapabilities();
 
             if(!empty($data['capabilities']) ) {
+
                 $capabilities_up  = $data['capabilities'];
-                foreach ( $capabilities_up as $key => $value ) {
-                    if( !isset($capabilities_old[$key]) ) {
-                        $role->add_cap($key);
+
+                foreach ($capabilities_up as $key => $value) {
+
+                    if(!isset($capabilities_old[$key])) {
+                        $role->add($key);
                     }
-                    else unset( $capabilities_old[$key] );
+                    else {
+                        unset($capabilities_old[$key]);
+                    }
                 }
             }
 
             if( have_posts($capabilities_old)) {
                 foreach ($capabilities_old as $key => $value ) {
-                    $role->remove_cap($key);
+                    $role->remove($key);
                 }
             }
 
-            $result['status']  = 'success';
-
-            $result['message'] = __('Lưu dữ liệu thành công');
-
+            response()->success(trans('ajax.save.success'));
         }
 
-        echo json_encode($result);
-
+        response()->error(trans('ajax.save.error'));
     }
-    static function add( $ci, $model ): bool
+    #[NoReturn]
+    static function add(SkillDo\Http\Request $request, $model): void
     {
+        if(!Auth::hasCap('role_add')) {
+            response()->error(trans('error.role'));
+        }
 
-        $result['status']  = 'error';
+        if($request->input()) {
 
-        $result['message'] = __('Lưu dữ liệu không thành công');
+            $validate = $request->validate([
+                'label' => Rule::make(trans('role.name'))->notEmpty(),
+            ]);
 
-        if(Request::post()) {
+            if ($validate->fails()) {
+                response()->error($validate->errors());
+            }
 
-            $data            = Request::post();
-
-            $roleName        = Str::clear($data['label']);
-
-			if(empty($roleName)) {
-                $result['message'] = __('Tên vai trò không được để trống');
-                echo json_encode($result);
-				return false;
-			}
+            $roleName  = Str::clear($request->input('label'));
 
             $roleKey = str_replace('-', '', Str::slug($roleName));
 
             $role    = Role::get($roleKey);
 
-            if(!have_posts($role)) {
-                Role::add($roleKey, $roleName);
-                $result['role']     = $roleKey;
-                $result['status']   = 'success';
-                $result['message']  = __('Lưu dữ liệu thành công');
+            if(have_posts($role)) {
+                response()->error(trans('error.role.notExists'));
             }
-            else {
-                $result['message'] = __('Nhóm quyền này đã tồn tại.');
-            }
+
+            Role::make()->add($roleKey, $roleName);
+
+            response()->success(trans('ajax.add.success'), $roleKey);
         }
 
-        echo json_encode($result);
-
-		return false;
+        response()->error(trans('ajax.add.error'));
     }
-    static function edit( $ci, $model ): bool
+    #[NoReturn]
+    static function edit(SkillDo\Http\Request $request, $model): void
     {
+        if(!Auth::hasCap('role_update')) {
+            response()->error(trans('error.role'));
+        }
 
-        $result['status']  = 'error';
+        if($request->input()) {
 
-        $result['message'] = __('Lưu dữ liệu không thành công');
+            $validate = $request->validate([
+                'roleName' => Rule::make(trans('role.name'))->notEmpty(),
+            ]);
 
-        if(Request::post()) {
-
-            $data            = Request::post();
-
-            $roleName        = Str::clear($data['roleName']);
-
-            if(empty($roleName)) {
-                $result['message'] = __('Tên vai trò không được để trống');
-                echo json_encode($result);
-                return false;
+            if ($validate->fails()) {
+                response()->error($validate->errors());
             }
 
-            $roleKey = Request::post('roleKey');
+            $roleName = Str::clear($request->input('roleName'));
+
+            $roleKey = $request->input('roleKey');
 
             $role    = Role::get($roleKey);
 
-            if(have_posts($role)) {
-                Role::update($roleKey, $roleName);
-                $result['name']     = $roleName;
-                $result['status']   = 'success';
-                $result['message']  = __('Lưu dữ liệu thành công');
+            if(!have_posts($role)) {
+                response()->error(trans('error.role.isset'));
             }
-            else {
-                $result['message'] = __('Không tìm thấy vai trò này.');
-            }
+
+            Role::make()->update($roleKey, $roleName);
+
+            response()->success(trans('ajax.update.success'), $roleName);
         }
 
-        echo json_encode($result);
-
-        return false;
+        response()->error(trans('ajax.update.error'));
     }
-    static function userLoadCapabilities( $ci, $model ): void {
-
-        $result['status']  = 'error';
-
-        $result['message'] = __('Load dữ liệu không thành công');
-
-        if(Request::post() ) {
-
-            $role_name = Request::post('role_name');
-
-            $user_id = Request::post('user_id');
-
-            $role_name_current = user_role( $user_id );
-
-            $role_name_current =  array_pop( $role_name_current );
-
-            if( Admin::isRoot() ) {
-
-                $role_name_default = 'root';
-            }
-            else $role_name_default = 'administrator';
-
-            $role_all 		= Role::get( $role_name_default )->capabilities;
-
-            $role_default   = Role::get( $role_name )->capabilities;
-
-            $role_current 	= Role::get( $user_id );
-
-            $roleLabel = RoleEditor::label();
-
-            $roleGroup = RoleEditor::group();
-
-            if($role_name_default == 'administrator') {
-
-                foreach ($roleGroup as &$role_group_value) {
-
-                    foreach ($role_group_value['capabilities'] as $key => $cap) {
-
-                        if(empty($role_all[$cap])) unset($role_group_value['capabilities'][$key]);
-                    }
-                }
-            }
-
-            if($role_name_current != $role_name ) {
-
-                $role_current = $role_default;
-            }
-
-            ob_start();
-
-            foreach ( $roleGroup as $key => $value): if(!have_posts($value['capabilities'])) continue; ?>
-                <div class="col-md-12">
-                    <h5><?php echo $value['label'];?></h5>
-                    <?php foreach ($value['capabilities'] as $capabilities): ?>
-                        <?php if(!isset($role_all[$capabilities])) continue; ?>
-                        <div class="col-md-6">
-                            <div class="checkbox">
-                                <label> <input type="checkbox" class="<?php echo (!empty($role_default[$capabilities]))?'icheckdisable':'icheck';?>" name="capabilities[<?php echo $capabilities;?>]" value="1" <?php echo (!empty($role_current[$capabilities]))?'checked':'';?>> <?php echo $roleLabel[$capabilities];?> </label>
-                            </div>
-                        </div>
-                    <?php endforeach ?>
-
-                    <div class="clearfix"></div>
-                    <hr />
-                </div>
-            <?php endforeach;
-
-            $content = ob_get_contents();
-
-            ob_clean();
-
-            ob_end_flush();
-
-            $result['content']  = $content;
-
-            $result['status']  = 'success';
-
-            $result['message'] = __('Lưu dữ liệu thành công');
-
+    #[NoReturn]
+    static function delete(SkillDo\Http\Request $request, $model): void
+    {
+        if(!Auth::hasCap('role_delete')) {
+            response()->error(trans('error.role'));
         }
 
-        echo json_encode($result);
+        if($request->input()) {
 
+            $validate = $request->validate([
+                'data' => Rule::make(trans('role.name'))->notEmpty(),
+            ]);
+
+            if ($validate->fails()) {
+                response()->error($validate->errors());
+            }
+
+            $roleKey = Str::clear($request->input('data'));
+
+			if(in_array($roleKey, ['root', 'administrator', 'customer', Option::get('default_role')])) {
+                response()->error(trans('error.role.delete'));
+			}
+
+            $role = Role::get($roleKey);
+
+            if(!have_posts($role)) {
+                response()->error(trans('error.role.isset'));
+            }
+
+            Role::make()->remove($roleKey);
+
+			model('users')::where('role', $roleKey)->update(['role', Option::get('default_role')]);
+
+            response()->success(trans('ajax.delete.success'), [
+				'location' => 'admin/plugins/role'
+            ]);
+        }
+
+        response()->error(trans('ajax.delete.error'));
     }
-    static function userSave( $ci, $model ) {
+    #[NoReturn]
+    static function userLoadCapabilities(SkillDo\Http\Request $request, $model): void {
 
-        $result['status']  = 'error';
+        if($request->input() ) {
 
-        $result['message'] = __('Lưu dữ liệu không thành công');
+            $roleKey = $request->input('role_name');
 
-        if(Request::post()) {
+            $userId = (int)$request->input('user_id');
 
-            $data       = Request::post();
+			$user = User::get($userId);
 
-            $roleName = Str::clear($data['role_name']);
+            $roleDisabled = Role::get($roleKey)->getCapabilities();
 
-            $user_id = (int)$data['user_id'];
+            $roleChecked = [];
 
-            $userEdit = User::get(Qr::set($user_id)->where('status', '<>', 'trash'));
+			if($roleKey == $user->role) {
+
+                $roleChecked = User::getCap($user->id);
+			}
+
+			foreach ($roleDisabled as $roleKey => $roleValue) {
+
+                $roleChecked[$roleKey] = $roleValue;
+			}
+
+            response()->error(trans('ajax.load.success'), [
+				'roleDisabled' => $roleDisabled,
+				'roleChecked' => $roleChecked,
+            ]);
+        }
+
+        response()->error(trans('ajax.load.error'));
+    }
+    #[NoReturn]
+    static function userSave(SkillDo\Http\Request $request, $model): void
+    {
+        if(!Auth::hasCap('role_editor_user')) {
+            response()->error(trans('error.role'));
+        }
+
+        if($request->input()) {
+
+            $roleName = Str::clear($request->input('role_name'));
+
+            $capabilities = $request->input('capabilities');
+
+            $userId = (int)$request->input('user_id');
+
+            $userEdit = User::get(Qr::set($userId)->where('status', '<>', 'trash'));
 
             if(!have_posts($userEdit) ) {
-                $result['message'] = __('User không chính xác.');
-                echo json_encode($result);
-                return false;
+                response()->error(trans('error.role.user'));
             }
 
             $userCurrent = Auth::user();
 
-            if($userCurrent->id != $userEdit->id && $userEdit->username == 'root') {
-                $result['message'] = __('Bạn không có quyền thay đổi quyền hạn của thành viên này.');
-                echo json_encode($result);
-                return false;
+            if(($userCurrent->id != $userEdit->id && $userEdit->username == 'root') || Auth::hasCap('user_edit')) {
+                response()->error(trans('error.role.update'));
             }
 
-            if(Auth::hasCap('user_edit')) {
-                $result['message'] = __('Bạn không có quyền thay đổi quyền hạn của thành viên.');
-                echo json_encode($result);
-                return false;
-            }
-
-            $capabilitiesUp = array();
-
-            if(!empty($data['capabilities'])) $capabilitiesUp  = $data['capabilities'];
+            $capabilitiesUp = (!empty($capabilities)) ? $capabilities : [];
 
             $capabilitiesUp[$roleName] = 1;
 
             User::updateMeta($userEdit->id, 'capabilities', $capabilitiesUp);
 
-			User::insert(['id' => $userEdit->id, 'role' => $roleName]);
+            if($userEdit->role !== $roleName) {
+                User::insert(['id' => $userEdit->id, 'role' => $roleName], $userEdit);
+            }
 
-            $result['status']  = 'success';
-
-            $result['message'] = __('Lưu dữ liệu thành công');
+            response()->success(trans('ajax.save.success'));
 
         }
 
-        echo json_encode($result);
+        response()->error(trans('ajax.save.error'));
+    }
+    #[NoReturn]
+    static function userChangeRole(SkillDo\Http\Request $request): void
+    {
+        if(!Auth::hasCap('role_editor_user')) {
+            response()->error(trans('error.role'));
+        }
+
+        if($request->isMethod('post')) {
+
+            $id = (int)$request->input('id');
+
+            $userEdit = User::get($id);
+
+            if(!have_posts($userEdit)) {
+                response()->error(trans('user.ajax.noExit'));
+            }
+
+            if(!Auth::hasCap('edit_users')) {
+                response()->error(trans('user.ajax.role'));
+            }
+
+            $validate = $request->validate([
+                'role' => Rule::make(trans('role.name'))
+                    ->notEmpty()
+                    ->in(array_keys(Role::make()->getNames()))
+                    ->custom(function($value) use ($userEdit) {
+                        return !($value == $userEdit->role);
+                    }, trans('error.role.noChange')),
+            ]);
+
+            if ($validate->fails()) {
+                response()->error($validate->errors());
+            }
+
+            $role = Str::clear($request->input('role'));
+
+            $error = User::insert(['id' => $id, 'role' => $role], $userEdit);
+
+            if(is_skd_error($error)) {
+                response()->error($error);
+            }
+
+            response()->success(trans('ajax.update.success'), [
+                'id'    => $userEdit->id,
+                'key'  => $role,
+                'name' => Role::get($role)->getName(),
+            ]);
+        }
+
+        response()->error(trans('ajax.update.error'));
     }
 }
 
 Ajax::admin('AdminRoleAjax::save');
 Ajax::admin('AdminRoleAjax::add');
 Ajax::admin('AdminRoleAjax::edit');
+Ajax::admin('AdminRoleAjax::delete');
 Ajax::admin('AdminRoleAjax::userLoadCapabilities');
 Ajax::admin('AdminRoleAjax::userSave');
+Ajax::admin('AdminRoleAjax::userChangeRole');
