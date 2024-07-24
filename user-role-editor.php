@@ -1,12 +1,4 @@
 <?php
-/**
-Plugin name     : User Role Editor
-Plugin class    : user_role_editor
-Plugin uri      : http://sikido.vn
-Description     : Trình chỉnh sửa vai trò người dùng SKD plugin cho phép bạn thay đổi vai trò người dùng và khả năng dễ dàng. 
-Author          : SKDSoftware Dev Team
-Version         : 2.0.0
-*/
 const URE_NAME = 'user-role-editor';
 
 class user_role_editor {

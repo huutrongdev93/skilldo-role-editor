@@ -1,0 +1,8 @@
+{
+    "name":"User Role Editor",
+    "class":"user_role_editor",
+    "url":"https://sikido.vn",
+    "description":"Trình chỉnh sửa vai trò người dùng SKD plugin cho phép bạn thay đổi vai trò người dùng và khả năng dễ dàng.",
+    "author":"SKDSoftware Dev Team",
+    "version":"2.0.0"
+}
