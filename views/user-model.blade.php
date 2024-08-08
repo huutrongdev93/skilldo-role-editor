@@ -58,7 +58,7 @@
 			    id: userId
 		    }
 
-		    loading.loading()
+		    loading.start()
 
 		    request
 			    .post(ajax, data)
@@ -66,7 +66,7 @@
 
 				    SkilldoMessage.response(response);
 
-				    loading.success();
+				    loading.stop();
 
 				    if(response.status === 'success') {
 
@@ -76,7 +76,7 @@
 				    }
 			    })
 			    .catch(function (error) {
-				    loading.success();
+				    loading.stop();
 			    });
 
 		    return false;
