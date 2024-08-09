@@ -18,13 +18,13 @@
 						{!! Admin::button('blue', ['icon' => Admin::icon('edit'), 'class' => 'jsRole_btn_edit']) !!}
 					@endif
 					@if(\Auth::hasCap('role_delete'))
-						{!! Admin::btnConfirm([
+						{!! Admin::btnConfirm('red', [
 							'icon' => Admin::icon('delete'),
 							'class' => 'jsRole_btn_delete',
 							'ajax' => 'AdminRoleAjax::delete',
 							'module' => 'role',
 							'heading' => 'Xóa chức vụ',
-							'trash' => 'disable',
+							'trash' => false,
 							'id' => $roleCurrentKey,
 						]) !!}
 					@endif
