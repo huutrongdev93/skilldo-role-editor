@@ -20,7 +20,11 @@ class AdminRoleAjax {
                 response()->error(trans('error.role'));
             }
 
-            $role            = Role::get($roleName);
+            $role  = Role::get($roleName);
+
+            if(!have_posts($role)) {
+                response()->error(trans('error.role.notFound'));
+            }
 
             $capabilities_old = $role->getCapabilities();
 
@@ -71,10 +75,15 @@ class AdminRoleAjax {
 
             $roleKey = str_replace('-', '', Str::slug($roleName));
 
+            if($roleKey == 'root' && !Admin::isRoot())
+            {
+                response()->error(trans('error.role.exists'));
+            }
+
             $role    = Role::get($roleKey);
 
             if(have_posts($role)) {
-                response()->error(trans('error.role.notExists'));
+                response()->error(trans('error.role.exists'));
             }
 
             Role::make()->add($roleKey, $roleName);
@@ -202,6 +211,10 @@ class AdminRoleAjax {
 
             $roleName = Str::clear($request->input('role_name'));
 
+            if($roleName == 'root' && !Admin::isRoot()) {
+                response()->error(trans('error.role.notFound'));
+            }
+
             $capabilities = $request->input('capabilities');
 
             $userId = (int)$request->input('user_id');
@@ -269,6 +282,10 @@ class AdminRoleAjax {
             }
 
             $role = Str::clear($request->input('role'));
+
+            if($role == 'root' && !Admin::isRoot()) {
+                response()->error(trans('error.role.notFound'));
+            }
 
             $error = User::insert(['id' => $id, 'role' => $role], $userEdit);
 
