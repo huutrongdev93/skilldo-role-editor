@@ -73,7 +73,7 @@ class RoleAjax
         }
 
         $validate = $request->validate([
-            'label' => Rule::make(trans('role.name'))->notEmpty(),
+            'label' => Rule::make(trans('user-role-editor::role.name'))->notEmpty(),
         ]);
 
         if ($validate->fails())
@@ -110,7 +110,7 @@ class RoleAjax
         }
 
         $validate = $request->validate([
-            'roleName' => Rule::make(trans('role.name'))->notEmpty(),
+            'roleName' => Rule::make(trans('user-role-editor::role.name'))->notEmpty(),
         ]);
 
         if ($validate->fails())
@@ -131,7 +131,7 @@ class RoleAjax
 
         if(!hasItems($role))
         {
-            response()->error(trans('error.role.isset'));
+            response()->error(trans('user-role-editor::error.role.isset'));
         }
 
         Role::make()->update($roleKey, $roleName);
@@ -172,7 +172,23 @@ class RoleAjax
 
             Role::make()->remove($roleKey);
 
-			User::where('role', $roleKey)->update(['role', config('cms.default_role')]);
+            $defaultRole = config('cms.default_role');
+
+            $holderIds = User::where('role', $roleKey)->pluck('id');
+
+            User::where('role', $roleKey)->update(['role' => $defaultRole]);
+
+            // Chức vụ thật nằm ở metadata capabilities: đưa người đang giữ chức vụ về role mặc định
+            foreach ($holderIds as $holderId)
+            {
+                $caps = UserRole::permission((int)$holderId);
+
+                unset($caps[$roleKey]);
+
+                $caps[$defaultRole] = 1;
+
+                User::updateMeta($holderId, 'capabilities', $caps);
+            }
 
             response()->success(trans('ajax.delete.success'), [
 				'location' => 'admin/plugins/role'
@@ -190,7 +206,14 @@ class RoleAjax
 
         $user = User::find($userId);
 
-        $roleDisabled = Role::get($roleKey)->getCapabilities();
+        $roleObject = Role::get($roleKey);
+
+        if(!hasItems($user) || !hasItems($roleObject))
+        {
+            response()->error(trans('user-role-editor::error.role.notFound'));
+        }
+
+        $roleDisabled = $roleObject->getCapabilities();
 
         $roleChecked = [];
 
@@ -204,7 +227,7 @@ class RoleAjax
             $roleChecked[$roleKey] = $roleValue;
         }
 
-        response()->error(trans('ajax.load.success'), [
+        response()->success(trans('ajax.load.success'), [
             'roleDisabled' => $roleDisabled,
             'roleChecked' => $roleChecked,
         ]);
@@ -236,7 +259,7 @@ class RoleAjax
 
         $userCurrent = auth();
 
-        if(($userCurrent->id != $userEdit->id && $userEdit->username == 'root') || Auth::hasCap('user_edit'))
+        if(($userCurrent->id != $userEdit->id && $userEdit->username == 'root') || !Auth::hasCap('edit_users'))
         {
             response()->error(trans('user-role-editor::error.role.update'));
         }
@@ -279,12 +302,12 @@ class RoleAjax
         }
 
         $validate = $request->validate([
-            'role' => Rule::make(trans('role.name'))
+            'role' => Rule::make(trans('user-role-editor::role.name'))
                 ->notEmpty()
                 ->in(array_keys(Role::make()->getNames()))
                 ->custom(function($value) use ($userEdit) {
                     return !($value == $userEdit->role);
-                }, trans('error.role.noChange')),
+                }, trans('user-role-editor::error.role.noChange')),
         ]);
 
         if ($validate->fails())
@@ -299,6 +322,15 @@ class RoleAjax
             response()->error(trans('user-role-editor::error.role.notFound'));
         }
 
+        // Chức vụ thật nằm ở metadata capabilities: thay chức vụ cũ bằng chức vụ mới, giữ quyền lẻ
+        $caps = UserRole::permission((int)$userEdit->id);
+
+        unset($caps[$userEdit->role]);
+
+        $caps[$role] = 1;
+
+        User::updateMeta($userEdit->id, 'capabilities', $caps);
+
         $userEdit->role = $role;
 
         $userEdit->save();
@@ -306,7 +338,7 @@ class RoleAjax
         response()->success(trans('ajax.update.success'), [
             'id'    => $userEdit->id,
             'key'  => $role,
-            'name' => Role::get($role)->getName(),
+            'name' => Role::get($role)?->getName() ?? $role,
         ]);
     }
 }

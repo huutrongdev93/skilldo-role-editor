@@ -74,12 +74,12 @@
 		<div class="modal-content">
 			<div class="modal-header">
 				<button type="button" class="close" data-bs-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-				<h4 class="modal-title" id="myModalLabel">Chỉnh sữa tên vai trò</h4>
+				<h4 class="modal-title" id="myModalLabel">Chỉnh sửa tên chức vụ</h4>
 			</div>
 			<form id="jsRole_form_edit" autocomplete="off">
 				<div class="modal-body">
 					<div class="form-group">
-						<label for="">{{ trans('role.name') }}</label>
+						<label for="">{{ trans('user-role-editor::role.name') }}</label>
 						<input type="text" name="roleName" class="form-control" value="" required>
 					</div>
 				</div>
@@ -97,12 +97,12 @@
 		<div class="modal-content">
 			<div class="modal-header">
 				<button type="button" class="close" data-bs-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-				<h4 class="modal-title">{{ trans('role.btn.add') }}</h4>
+				<h4 class="modal-title">{{ trans('user-role-editor::role.btn.add') }}</h4>
 			</div>
 			<form id="jsRole_form_add" autocomplete="off">
 				<div class="modal-body">
 					<div class="form-group">
-						<label for="">{{ trans('role.name') }}</label>
+						<label for="">{{ trans('user-role-editor::role.name') }}</label>
 						<input type="text" name="label" class="form-control" value="" required>
 					</div>
 				</div>

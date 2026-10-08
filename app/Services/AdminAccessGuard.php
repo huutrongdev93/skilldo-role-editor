@@ -44,6 +44,17 @@ class AdminAccessGuard
             'plugins'              => 'edit_plugins',
             'system'               => 'edit_setting',
             'user'                 => 'list_users',
+
+            // Plugin khác (luật mặc định, plugin không bật thì khoá menu không tồn tại nên vô hại)
+            'order'                => 'order_list',
+            'affiliate'            => 'edit_setting', // plugin affiliate chưa khai quyền riêng
+            'locator-store'        => 'store_list',
+            'locator-store.locator-store-add' => 'store_edit',
+            'reels'                => 'reels_view',
+            'reels.reels-add'      => 'reels_add',
+            'reels.reels-setting'  => 'reels_setting',
+            // Menu con form đăng ký (khoá động theo từng form) nằm trong nhóm Marketing, xem navigation()
+            'marketing.form_register_result_*' => 'view_email_register',
         ]);
     }
 
@@ -81,6 +92,49 @@ class AdminAccessGuard
             'admin.post.add'                  => [self::class, 'canPost'],
             'admin.post.edit'                 => [self::class, 'canPost'],
             'admin.post_categories.index'     => [self::class, 'canPostCategory'],
+
+            // sicommerce
+            'admin.products.index'                  => 'product_list',
+            'admin.products.add'                    => 'product_edit',
+            'admin.products.edit'                   => 'product_edit',
+            'admin.products_categories.index'       => 'product_cate_list',
+            'admin.products.brands.index'           => 'product_cate_list',
+            'admin.products.brands.add'             => 'product_cate_edit',
+            'admin.products.brands.edit'            => 'product_cate_edit',
+            'admin.products.attributes.index'       => 'attributes_list',
+            'admin.products.attributes.add'         => 'attributes_add',
+            'admin.products.attributes.edit'        => 'attributes_edit',
+            'admin.products.extra-templates.index'  => 'attributes_list',
+            'admin.products.extra-templates.add'    => 'attributes_add',
+            'admin.products.extra-templates.edit'   => 'attributes_edit',
+            'admin.products.collection.index'       => 'products_collections_list',
+            'admin.products.collection.add'         => 'products_collections_edit',
+            'admin.products.collection.edit'        => 'products_collections_edit',
+            'admin.order.index'                     => 'order_list',
+            'admin.order.detail'                    => 'order_list',
+            'admin.order.add'                       => 'order_add',
+            'admin.order.edit'                      => 'order_edit',
+
+            // affiliate (chưa khai quyền riêng nên dùng quyền cấu hình hệ thống)
+            'admin.affiliate.index'                 => 'edit_setting',
+            'admin.affiliate.commission.categories' => 'edit_setting',
+            'admin.affiliate.commission.products'   => 'edit_setting',
+            'admin.affiliate.registers'             => 'edit_setting',
+            'admin.affiliate.users'                 => 'edit_setting',
+            'admin.affiliate.user.detail'           => 'edit_setting',
+            'admin.affiliate.orders'                => 'edit_setting',
+            'admin.affiliate.histories'             => 'edit_setting',
+            'admin.affiliate.payments'              => 'edit_setting',
+
+            // locator-store
+            'admin.locator_stores.index'            => 'store_list',
+            'admin.locator_stores.add'              => 'store_edit',
+            'admin.locator_stores.edit'             => 'store_edit',
+
+            // reels
+            'admin.reels.index'                     => 'reels_view',
+            'admin.reels.add'                       => 'reels_add',
+            'admin.reels.edit'                      => 'reels_edit',
         ]);
     }
 
@@ -107,7 +161,9 @@ class AdminAccessGuard
                 {
                     $capKey = $key.'.'.$subKey;
 
-                    if (isset($caps[$capKey]) && !Auth::hasCap($caps[$capKey]))
+                    $subCap = $caps[$capKey] ?? static::wildcardCap($caps, $capKey);
+
+                    if ($subCap !== null && !Auth::hasCap($subCap))
                     {
                         unset($nav[$key]['subs'][$subKey]);
                     }
@@ -126,6 +182,22 @@ class AdminAccessGuard
         }
 
         return $nav;
+    }
+
+    /**
+     * Luật dạng 'cha.tiền_tố*' cho menu con có khoá động (vd form đăng ký theo từng form).
+     */
+    static protected function wildcardCap(array $caps, string $capKey): ?string
+    {
+        foreach ($caps as $pattern => $cap)
+        {
+            if (str_ends_with((string)$pattern, '*') && str_starts_with($capKey, substr($pattern, 0, -1)))
+            {
+                return $cap;
+            }
+        }
+
+        return null;
     }
 
     /**

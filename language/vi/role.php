@@ -1,8 +1,8 @@
 <?php
 return [
     'title' => 'Phân quyền',
-    'system.description'        => 'Quản lý các cấp bật quyền hạng thành viên',
-    'system.detail.description' => 'Chọn vai trò và tùy chỉnh khả năng làm việc của vai trò đó',
+    'system.description'        => 'Quản lý các chức vụ và quyền hạn của thành viên',
+    'system.detail.description' => 'Chọn chức vụ và tùy chỉnh quyền hạn của chức vụ đó',
     'name'      => 'Tên chức vụ',
     'btn.add'   => 'Thêm chức vụ',
     'search'    => 'Tìm quyền',

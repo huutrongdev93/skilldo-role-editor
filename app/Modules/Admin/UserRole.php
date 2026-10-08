@@ -21,7 +21,7 @@ class UserRole
         $column['role'] = [
             'label' => trans('user-role-editor::user.role'),
             'column'=> fn($item, $args) => ColumnView::make('role', $item, $args)
-                ->value(fn($item) => Role::get($item->role)->getName())
+                ->value(fn($item) => Role::get($item->role)?->getName() ?? $item->role)
                 ->html(function (ColumnView $column) {
                     echo '<span class="js_btn_user_role" data-id="'.$column->item->id.'" data-role="'.$column->item->role.'">'.$column->value.'</span>';
                 })
@@ -31,7 +31,8 @@ class UserRole
 
     static function model(): void
     {
-        if(Admin::isPage('users_index'))
+        // v8: route admin.user.index → UserController@index → trang 'user_index' (không phải 'users_index')
+        if(app('router')->currentRouteName() === 'admin.user.index' || Admin::isPage('user_index'))
         {
             $roles = Role::make()->all();
 
@@ -66,7 +67,7 @@ class UserRole
 
         $roleCurrent = UserRoleHelper::getCap($user->id);
 
-        $roleDefault   = Role::get($user->role)->getCapabilities();
+        $roleDefault   = Role::get($user->role)?->getCapabilities() ?? [];
 
         $roleLabel = RoleEditorService::label();
 
