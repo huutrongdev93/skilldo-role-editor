@@ -191,7 +191,7 @@ class RoleAjax
             }
 
             response()->success(trans('ajax.delete.success'), [
-				'location' => 'admin/plugins/role'
+				'location' => 'admin/system/role'
             ]);
         }
 
